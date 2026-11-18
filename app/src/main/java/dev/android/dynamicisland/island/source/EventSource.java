@@ -122,6 +122,7 @@ public final class EventSource {
         bluetooth.addAction(BT_BATTERY_ACTION);
         // sent by the Bluetooth app: only accept senders that hold the permission so apps cannot spoof it
         register("bluetooth", bluetooth, "android.permission.BLUETOOTH_CONNECT", Context.RECEIVER_EXPORTED, this::onBluetooth);
+        pixelBuds.startBatteryRelay();
     }
 
     public void syncSettings() {

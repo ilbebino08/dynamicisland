@@ -2,12 +2,13 @@ package dev.android.dynamicisland.xposed;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import dev.android.dynamicisland.island.source.PixelBudsBatteryBridge;
 import dev.android.dynamicisland.xposed.hooks.SystemUiHooks;
 
 /**
  * LSPosed entry point (named in {@code assets/xposed_init}). Installs the hooks once, in the main
- * System UI process only, and not at all when {@link CrashGuard} has switched the module off.
- * Samsung's separate brief-popup process receives only the optional native popup rendering bridge.
+ * System UI process, and not at all when {@link CrashGuard} has switched the module off.
+ * Samsung's brief-popup process receives its rendering bridge. The Pixel Buds app receives a battery relay.
  */
 public final class Entry implements IXposedHookLoadPackage {
     private static final String SYSTEM_UI = "com.android.systemui";
@@ -30,6 +31,15 @@ public final class Entry implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
+        if (PixelBudsBatteryBridge.COMPANION.equals(lpparam.packageName)
+                && PixelBudsBatteryBridge.COMPANION.equals(lpparam.processName)) {
+            if (!installed) {
+                installed = true;
+                try { PixelBudsBatteryBridge.install(); }
+                catch (Throwable failure) { XLog.e("Pixel Buds battery hook unavailable", failure); }
+            }
+            return;
+        }
         if (SYSTEM_UI.equals(lpparam.packageName) && (SYSTEM_UI + ":edgelighting").equals(lpparam.processName)) {
             if (!installed) {
                 installed = true;

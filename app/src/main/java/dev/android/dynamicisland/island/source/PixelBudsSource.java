@@ -5,7 +5,10 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.SystemClock;
 import dev.android.dynamicisland.island.IslandText;
@@ -23,7 +26,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,7 +33,7 @@ import java.util.concurrent.Executors;
 @SuppressLint("MissingPermission") // Runs with the SystemUI host's Bluetooth permissions.
 final class PixelBudsSource {
     private static final String MODEL_NAME = "Pixel Buds 2a";
-    private static final UUID MAESTRO = UUID.fromString("25e97ff7-24ce-4c4c-8951-f764a708f7b5");
+    private static final long COMPANION_GRACE_MS = 2_500;
     private static final long CONNECT_TIMEOUT_MS = 8_000;
     private static final long WRITE_TIMEOUT_MS = 2_000;
     private static final long RETRY_MS = 3_000;
@@ -50,6 +52,44 @@ final class PixelBudsSource {
         this.context = context;
         this.main = main;
         this.onChange = onChange;
+    }
+
+    void startBatteryRelay() {
+        try {
+            context.registerReceiver(new BroadcastReceiver() {
+                @Override public void onReceive(Context ctx, Intent intent) {
+                    if (!PixelBudsBatteryBridge.COMPANION.equals(getSentFromPackage())) return;
+                    try {
+                        onBatteryRelay(intent.getStringExtra(PixelBudsBatteryBridge.ADDRESS),
+                                intent.getIntArrayExtra(PixelBudsBatteryBridge.LEVELS));
+                    } catch (RuntimeException error) {
+                        XLog.once("Pixel Buds battery relay input", error);
+                    }
+                }
+            }, new IntentFilter(PixelBudsBatteryBridge.ACTION), "android.permission.BLUETOOTH_CONNECT",
+                    main, Context.RECEIVER_EXPORTED);
+        } catch (RuntimeException error) {
+            XLog.once("Pixel Buds battery receiver", error);
+        }
+    }
+
+    void onBatteryRelay(String address, int[] levels) {
+        Buds buds = devices.get(address);
+        if (buds == null || !ModuleSettings.eventBluetooth()) return;
+        if (levels != null && (levels.length != 3 || Arrays.stream(levels).anyMatch(level -> level < -1 || level > 100))) return;
+        if (!buds.companionActive) {
+            buds.companionActive = true;
+            buds.stop();
+            buds.mode = -1;
+            buds.pendingMode = 0;
+            Arrays.fill(buds.lastSeen, true);
+            XLog.d("Pixel Buds 2a: using companion battery reports");
+        }
+        if (levels != null) {
+            buds.updateBatteries(levels);
+            XLog.d("Pixel Buds 2a: companion batteries received");
+        }
+        onChange.run();
     }
 
     static boolean matches(BluetoothDevice device) {
@@ -85,7 +125,7 @@ final class PixelBudsSource {
         Buds buds = new Buds(device);
         devices.put(device.getAddress(), buds);
         buds.refreshBatteryMetadata();
-        buds.open();
+        main.postDelayed(buds.retry, COMPANION_GRACE_MS);
         XLog.d("Pixel Buds 2a: persistent card available");
         onChange.run();
     }
@@ -145,6 +185,7 @@ final class PixelBudsSource {
         int mode = -1;
         int pendingMode;
         boolean writeRejected;
+        boolean companionActive;
         boolean modePushedDuringWrite;
 
         Buds(BluetoothDevice device) {
@@ -152,7 +193,7 @@ final class PixelBudsSource {
         }
 
         void open() {
-            if (devices.get(device.getAddress()) != this || session != null) return;
+            if (devices.get(device.getAddress()) != this || session != null || companionActive) return;
             // shortcut: only the Maestro protocol observed on Pro 2 is implemented, extend after capturing 2a firmware variants.
             Session opened = new Session(this);
             session = opened;
@@ -193,6 +234,13 @@ final class PixelBudsSource {
             NumberFormat format = NumberFormat.getPercentInstance(context.getResources().getConfiguration().getLocales().get(0));
             String level = format.format(battery[index] / 100.0);
             return lastSeen[index] ? text("island_buds_last_seen", level) : level;
+        }
+
+        void updateBatteries(int[] levels) {
+            for (int index = 0; index < levels.length; index++) {
+                lastSeen[index] = levels[index] < 0;
+                if (levels[index] >= 0) battery[index] = levels[index];
+            }
         }
 
         boolean refreshBatteryMetadata() {
@@ -254,7 +302,7 @@ final class PixelBudsSource {
         }
 
         void read() {
-            try (BluetoothSocket connection = buds.device.createRfcommSocketToServiceRecord(MAESTRO)) {
+            try (BluetoothSocket connection = buds.device.createRfcommSocketToServiceRecord(PixelBudsBatteryBridge.MAESTRO)) {
                 socket = connection;
                 if (closed) return;
                 connection.connect();
@@ -298,11 +346,7 @@ final class PixelBudsSource {
             if (packet.channel() != channel) return;
             if (packet.method() == PixelBudsMaestro.BATTERY && packet.type() == PixelBudsMaestro.STREAM) {
                 ready();
-                int[] levels = packet.batteries();
-                for (int index = 0; index < levels.length; index++) {
-                    buds.lastSeen[index] = levels[index] < 0;
-                    if (levels[index] >= 0) buds.battery[index] = levels[index];
-                }
+                buds.updateBatteries(packet.batteries());
             } else if ((packet.method() == PixelBudsMaestro.SETTINGS && packet.type() == PixelBudsMaestro.STREAM)
                     || (packet.method() == PixelBudsMaestro.READ_MODE && packet.type() == PixelBudsMaestro.RESPONSE
                     && !modeStreamSeen)) {

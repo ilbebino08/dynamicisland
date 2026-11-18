@@ -26,6 +26,15 @@ public class PixelBudsMaestroTest {
         assertArrayEquals(new int[] {100, 100, 60}, packet.batteries());
     }
 
+    @Test public void companionRelayOnlyEmitsCompleteBatteryFrames() {
+        PixelBudsBatteryBridge.BatteryFrames stream = new PixelBudsBatteryBridge.BatteryFrames();
+        byte[] settings = hex("7e00a5032a0422026802080710151dea71de7d5e25f5ad2128cbb358d57e");
+        byte[] batteries = hex("7e80a3032a1e180032120a04083c10011204086410021a04086410023a06080110011800080710131dea71de7d5e2590821ee6160866417e");
+        for (byte value : settings) assertNull(stream.accept(value));
+        for (int i = 0; i < batteries.length - 1; i++) assertNull(stream.accept(batteries[i]));
+        assertArrayEquals(new int[] {100, 100, 60}, stream.accept(batteries[batteries.length - 1]));
+    }
+
     private static byte[] hex(String text) {
         return HexFormat.of().parseHex(text);
     }
