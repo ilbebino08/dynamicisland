@@ -185,6 +185,7 @@ final class PixelBudsSource {
 
     private final class Buds {
         final BluetoothDevice device;
+        final PixelBudsIcons icons = new PixelBudsIcons(context);
         final long connectedSince = SystemClock.uptimeMillis();
         final int[] battery = {-1, -1, -1};
         final boolean[] lastSeen = new boolean[3];
@@ -227,11 +228,11 @@ final class PixelBudsSource {
             item.kind = IslandItem.Kind.EVENT;
             item.postTime = connectedSince;
             item.title = MODEL_NAME;
-            item.icon = GlyphIcon.of(GlyphIcon.Kind.HEADPHONES);
+            item.icon = icons.pair == null ? GlyphIcon.of(GlyphIcon.Kind.HEADPHONES) : icons.pair;
             item.accent = 0xff0a84ff;
             item.trailing = IslandItem.Trailing.TEXT;
             item.trailingText = item.title;
-            item.description = text("island_buds_battery", level(0), level(1), level(2));
+            item.description = icons.batteryDescription(context, level(0), level(1), level(2));
             item.descriptionMaxLines = 5;
             int next = nextMode(mode);
             if (next != 0 && (session != null || companionActive)) {

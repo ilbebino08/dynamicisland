@@ -5,8 +5,12 @@ import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Spanned;
+import android.text.style.ImageSpan;
 import dev.android.dynamicisland.island.model.IslandItem;
 import dev.android.dynamicisland.settings.ModuleSettings;
 import dev.android.dynamicisland.xposed.Refl;
@@ -126,6 +130,18 @@ public class BluetoothGroupingTest {
         } finally {
             source.clear();
         }
+    }
+
+    @Test public void availableGoogleIconsDecorateTheExistingBatteryLabels() {
+        Drawable left = new ColorDrawable();
+        Drawable chargingCase = new ColorDrawable();
+        var description = (Spanned) PixelBudsIcons.batteryDescription(RuntimeEnvironment.getApplication(),
+                new Drawable[] {left, null, chargingCase}, "73%", "72%", "52%");
+        ImageSpan[] icons = description.getSpans(0, description.length(), ImageSpan.class);
+        assertEquals(2, icons.length);
+        assertSame(left, icons[0].getDrawable());
+        assertSame(chargingCase, icons[1].getDrawable());
+        assertTrue(description.toString().contains("Right 72%"));
     }
 
     @Test public void samsungMemberAndLeadCycleBecomeOneStablePopupAndEitherMemberUpdatesBattery() {
