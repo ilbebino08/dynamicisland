@@ -13,6 +13,7 @@ import dev.android.dynamicisland.island.graphics.GlyphIcon;
 import dev.android.dynamicisland.island.model.IslandItem;
 import dev.android.dynamicisland.settings.ModuleSettings;
 import dev.android.dynamicisland.xposed.Refl;
+import dev.android.dynamicisland.xposed.XLog;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -29,6 +30,7 @@ import java.util.concurrent.Executors;
 /** The island card and RFCOMM sessions for paired, connected Pixel Buds 2a. */
 @SuppressLint("MissingPermission") // Runs with the SystemUI host's Bluetooth permissions.
 final class PixelBudsSource {
+    private static final String MODEL_NAME = "Pixel Buds 2a";
     private static final UUID MAESTRO = UUID.fromString("25e97ff7-24ce-4c4c-8951-f764a708f7b5");
     private static final long CONNECT_TIMEOUT_MS = 8_000;
     private static final long WRITE_TIMEOUT_MS = 2_000;
@@ -52,7 +54,10 @@ final class PixelBudsSource {
 
     static boolean matches(BluetoothDevice device) {
         try {
-            return "Pixel Buds 2a".equalsIgnoreCase(device.getName());
+            String name = device.getName();
+            int modelEnd = MODEL_NAME.length();
+            return name != null && name.regionMatches(true, 0, MODEL_NAME, 0, modelEnd)
+                    && (name.length() == modelEnd || Character.isWhitespace(name.charAt(modelEnd)));
         } catch (RuntimeException ignored) {
             return false;
         }
@@ -81,6 +86,7 @@ final class PixelBudsSource {
         devices.put(device.getAddress(), buds);
         buds.refreshBatteryMetadata();
         buds.open();
+        XLog.d("Pixel Buds 2a: persistent card available");
         onChange.run();
     }
 
@@ -164,7 +170,7 @@ final class PixelBudsSource {
             IslandItem item = new IslandItem("event:bt:" + device.getAddress());
             item.kind = IslandItem.Kind.EVENT;
             item.postTime = connectedSince;
-            item.title = "Pixel Buds 2a";
+            item.title = MODEL_NAME;
             item.icon = GlyphIcon.of(GlyphIcon.Kind.HEADPHONES);
             item.accent = 0xff0a84ff;
             item.trailing = IslandItem.Trailing.TEXT;
@@ -258,7 +264,7 @@ final class PixelBudsSource {
                     if (packet != null) main.post(() -> receive(packet));
                 }
             } catch (IOException | RuntimeException ignored) {
-                // Some firmware can close Maestro while the audio connection remains active.
+                if (!closed) XLog.d("Pixel Buds 2a: Maestro connection ended (" + ignored.getClass().getSimpleName() + ")");
             } finally {
                 main.post(() -> buds.failed(this));
             }
@@ -283,6 +289,7 @@ final class PixelBudsSource {
                 if (packet.method() != PixelBudsMaestro.SOFTWARE || packet.type() != PixelBudsMaestro.RESPONSE
                         || packet.callId() != -1 || !PixelBudsMaestro.supportsChannel(packet.channel())) return;
                 channel = packet.channel();
+                XLog.d("Pixel Buds 2a: Maestro channel confirmed");
                 send(PixelBudsMaestro.request(channel, PixelBudsMaestro.SETTINGS));
                 send(PixelBudsMaestro.request(channel, PixelBudsMaestro.READ_MODE, (byte) 0x20, (byte) 13));
                 send(PixelBudsMaestro.request(channel, PixelBudsMaestro.BATTERY));
@@ -306,6 +313,7 @@ final class PixelBudsSource {
                     modeStreamSeen = true;
                     buds.modePushedDuringWrite = buds.pendingMode != 0;
                 }
+                if (buds.mode == -1) XLog.d("Pixel Buds 2a: noise control state received");
                 buds.mode = mode;
             } else if (packet.method() == PixelBudsMaestro.WRITE_MODE && packet.type() == PixelBudsMaestro.RESPONSE
                     && buds.pendingMode != 0) {

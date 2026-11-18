@@ -72,8 +72,15 @@ public class BluetoothGroupingTest {
         List<IslandItem> out = new ArrayList<>();source.collect(out);return out;
     }
 
+    @Test public void recognizesPixelBudsWithPersonalizedBluetoothNames() {
+        assertTrue(PixelBudsSource.matches(device("3C:31:8A:46:D5:05", "Pixel Buds 2a di Test", 73)));
+        assertTrue(PixelBudsSource.matches(device("3C:31:8A:46:D5:06", "pixel buds 2A", 73)));
+        assertFalse(PixelBudsSource.matches(device("3C:31:8A:46:D5:07", "Pixel Buds 2abc", 73)));
+        assertFalse(PixelBudsSource.matches(device("3C:31:8A:46:D5:08", "Pixel Buds Pro 2", 73)));
+    }
+
     @Test public void pixelBudsCardStaysUntilDisconnectAndListsEachBattery() {
-        BluetoothDevice earbuds = device("3C:31:8A:46:D5:05", "Pixel Buds 2a", 73);
+        BluetoothDevice earbuds = device("3C:31:8A:46:D5:05", "Pixel Buds 2a di Test", 73);
         Shadows.shadowOf(earbuds).setBondState(BluetoothDevice.BOND_BONDED);
         assertEquals(Boolean.TRUE, Refl.call(earbuds, "setMetadata", 10, new byte[] {'7', '3'}));
         EventSource source = source();
