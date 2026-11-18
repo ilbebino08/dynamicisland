@@ -427,6 +427,12 @@
     <string name="island_sound_mode">Sound mode</string>
     <string name="island_bluetooth_device">Bluetooth device</string>
     <string name="island_connected">Connected</string>
+    <string name="island_buds_battery">Left %1$s · Right %2$s\nCase %3$s</string>
+    <string name="island_buds_last_seen">%1$s (last seen)</string>
+    <string name="island_buds_noise_cancellation">Noise cancellation</string>
+    <string name="island_buds_transparency">Transparency</string>
+    <string name="island_buds_noise_unavailable">Noise control unavailable</string>
+    <string name="island_buds_noise_failed">Could not change noise control</string>
     <string name="island_sharing_screen">Sharing screen</string>
     <string name="island_casting_screen">Casting screen</string>
     <string name="island_more_apps">" +%1$d"</string>

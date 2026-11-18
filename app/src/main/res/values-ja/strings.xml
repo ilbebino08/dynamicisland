@@ -418,6 +418,12 @@
     <string name="island_sound_mode">サウンドモード</string>
     <string name="island_bluetooth_device">Bluetooth機器</string>
     <string name="island_connected">接続済み</string>
+    <string name="island_buds_battery">左 %1$s · 右 %2$s\nケース %3$s</string>
+    <string name="island_buds_last_seen">%1$s（最終確認時）</string>
+    <string name="island_buds_noise_cancellation">ノイズ キャンセリング</string>
+    <string name="island_buds_transparency">外部音取り込み</string>
+    <string name="island_buds_noise_unavailable">ノイズ コントロールは利用できません</string>
+    <string name="island_buds_noise_failed">ノイズ コントロールを変更できませんでした</string>
     <string name="island_sharing_screen">画面を共有中</string>
     <string name="island_casting_screen">画面をキャスト中</string>
     <string name="island_more_apps">" 他%1$d個"</string>

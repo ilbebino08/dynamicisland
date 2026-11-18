@@ -418,6 +418,12 @@
     <string name="island_sound_mode">Режим звука</string>
     <string name="island_bluetooth_device">Устройство Bluetooth</string>
     <string name="island_connected">Подключено</string>
+    <string name="island_buds_battery">Левый %1$s · Правый %2$s\nФутляр %3$s</string>
+    <string name="island_buds_last_seen">%1$s (последнее значение)</string>
+    <string name="island_buds_noise_cancellation">Шумоподавление</string>
+    <string name="island_buds_transparency">Прозрачность</string>
+    <string name="island_buds_noise_unavailable">Управление шумом недоступно</string>
+    <string name="island_buds_noise_failed">Не удалось сменить режим шумоподавления</string>
     <string name="island_sharing_screen">Демонстрация экрана</string>
     <string name="island_casting_screen">Трансляция экрана</string>
     <string name="island_more_apps">" и ещё %1$d"</string>

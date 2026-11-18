@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import dev.android.dynamicisland.island.model.IslandItem;
 import dev.android.dynamicisland.settings.ModuleSettings;
+import dev.android.dynamicisland.xposed.Refl;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -69,6 +70,34 @@ public class BluetoothGroupingTest {
 
     private List<IslandItem> shown(EventSource source) {
         List<IslandItem> out = new ArrayList<>();source.collect(out);return out;
+    }
+
+    @Test public void pixelBudsCardStaysUntilDisconnectAndListsEachBattery() {
+        BluetoothDevice earbuds = device("3C:31:8A:46:D5:05", "Pixel Buds 2a", 73);
+        Shadows.shadowOf(earbuds).setBondState(BluetoothDevice.BOND_BONDED);
+        assertEquals(Boolean.TRUE, Refl.call(earbuds, "setMetadata", 10, new byte[] {'7', '3'}));
+        EventSource source = source();
+        try {
+            connect(source, earbuds);
+            IslandItem first = shown(source).get(0);
+            assertTrue(first.description.toString().contains("73%"));
+            assertFalse(first.transientPopup);
+            source.setShadeOpen(true);
+            Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31));
+            source.setShadeOpen(false);
+            IslandItem stillConnected = shown(source).get(0);
+            assertEquals(first.key, stillConnected.key);
+            assertEquals(first.postTime, stillConnected.postTime);
+            assertTrue(stillConnected.description.toString().contains("Case"));
+        } finally {
+            source.onBluetooth(new Intent(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+                    .putExtra(BluetoothDevice.EXTRA_DEVICE, earbuds));
+        }
+        assertTrue(shown(source).isEmpty());
+        assertEquals(1, PixelBudsSource.nextMode(2));
+        assertEquals(3, PixelBudsSource.nextMode(1));
+        assertEquals(2, PixelBudsSource.nextMode(3));
+        assertEquals(0, PixelBudsSource.nextMode(0));
     }
 
     @Test public void samsungMemberAndLeadCycleBecomeOneStablePopupAndEitherMemberUpdatesBattery() {

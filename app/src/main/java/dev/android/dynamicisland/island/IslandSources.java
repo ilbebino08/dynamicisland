@@ -105,7 +105,6 @@ final class IslandSources {
     /** Starts the sources that listen on their own; the event and privacy islands may fail without harm. */
     void start(Runnable onChange) {
         media.start();
-        syncOptionalSources();
         try {
             events.start();
             torch.start();
@@ -113,12 +112,14 @@ final class IslandSources {
         } catch (Throwable t) {
             XLog.e("event islands failed to start", t);
         }
+        syncOptionalSources();
         oa.onChanged = onChange;
     }
 
     void syncOptionalSources() {
         guarded("charging settings", charging::syncSettings);
         guarded("headset settings", headset::syncSettings);
+        guarded("Bluetooth settings", events::syncSettings);
         guarded("hotspot settings", hotspot::syncSettings);
     }
 

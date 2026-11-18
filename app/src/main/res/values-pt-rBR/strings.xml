@@ -418,6 +418,12 @@
     <string name="island_sound_mode">Modo de som</string>
     <string name="island_bluetooth_device">Dispositivo Bluetooth</string>
     <string name="island_connected">Conectado</string>
+    <string name="island_buds_battery">Esquerdo %1$s · Direito %2$s\nEstojo %3$s</string>
+    <string name="island_buds_last_seen">%1$s (última leitura)</string>
+    <string name="island_buds_noise_cancellation">Cancelamento de ruído</string>
+    <string name="island_buds_transparency">Transparência</string>
+    <string name="island_buds_noise_unavailable">Controle de ruído indisponível</string>
+    <string name="island_buds_noise_failed">Não foi possível mudar o controle de ruído</string>
     <string name="island_sharing_screen">Compartilhando tela</string>
     <string name="island_casting_screen">Transmitindo tela</string>
     <string name="island_more_apps">" +%1$d"</string>

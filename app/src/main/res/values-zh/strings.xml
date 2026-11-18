@@ -418,6 +418,12 @@
     <string name="island_sound_mode">声音模式</string>
     <string name="island_bluetooth_device">蓝牙设备</string>
     <string name="island_connected">已连接</string>
+    <string name="island_buds_battery">左耳 %1$s · 右耳 %2$s\n充电盒 %3$s</string>
+    <string name="island_buds_last_seen">%1$s（上次读数）</string>
+    <string name="island_buds_noise_cancellation">主动降噪</string>
+    <string name="island_buds_transparency">通透模式</string>
+    <string name="island_buds_noise_unavailable">噪声控制不可用</string>
+    <string name="island_buds_noise_failed">无法更改噪声控制模式</string>
     <string name="island_sharing_screen">正在共享屏幕</string>
     <string name="island_casting_screen">正在投屏</string>
     <string name="island_more_apps">另有 %1$d 个应用</string>

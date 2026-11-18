@@ -1,6 +1,7 @@
 package dev.android.dynamicisland.island.source;
 
 import android.app.NotificationManager;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -75,6 +76,7 @@ public final class EventSource {
     };
     private final Map<String, IslandItem> events = new LinkedHashMap<>();
     private final Function<BluetoothDevice, Set<String>> bluetoothIdentity;
+    private final PixelBudsSource pixelBuds;
     private final Map<String, BluetoothDevice> bluetoothDevices = new LinkedHashMap<>();
     private final Map<String, String> bluetoothKeys = new LinkedHashMap<>();
     private int bluetoothRechecks;
@@ -106,6 +108,7 @@ public final class EventSource {
         this.main = main;
         this.onChange = onChange;
         this.bluetoothIdentity = bluetoothIdentity;
+        this.pixelBuds = new PixelBudsSource(ctx, main, onChange);
     }
 
     /** Registers the receivers; every event then comes in on the main thread. */
@@ -114,9 +117,15 @@ public final class EventSource {
         register("ringer", new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION), null, Context.RECEIVER_NOT_EXPORTED, this::onRinger);
         startToggles();
         IntentFilter bluetooth = new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED);
+        bluetooth.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+        bluetooth.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         bluetooth.addAction(BT_BATTERY_ACTION);
         // sent by the Bluetooth app: only accept senders that hold the permission so apps cannot spoof it
         register("bluetooth", bluetooth, "android.permission.BLUETOOTH_CONNECT", Context.RECEIVER_EXPORTED, this::onBluetooth);
+    }
+
+    public void syncSettings() {
+        pixelBuds.syncSettings();
     }
 
     private interface Handle {
@@ -295,6 +304,7 @@ public final class EventSource {
 
     /** Adds the events that are still alive and schedules the refresh that removes them. */
     public void collect(List<IslandItem> out) {
+        pixelBuds.collect(out);
         if (events.isEmpty()) {
             pruneBluetooth();
             return;
@@ -512,11 +522,26 @@ public final class EventSource {
     // -------------------------------------------------------------- bluetooth
 
     void onBluetooth(Intent i) {
+        if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(i.getAction())) {
+            if (i.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) == BluetoothAdapter.STATE_OFF) {
+                pixelBuds.clear();
+            }
+            return;
+        }
         if (!ModuleSettings.eventBluetooth()) {
             return;
         }
         BluetoothDevice device = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice.class);
         if (device == null) {
+            return;
+        }
+        if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(i.getAction())) {
+            pixelBuds.disconnect(device);
+            return;
+        }
+        if (PixelBudsSource.matches(device)) {
+            if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(i.getAction())) pixelBuds.connect(device);
+            else if (BT_BATTERY_ACTION.equals(i.getAction())) pixelBuds.refreshBatteryMetadata(device);
             return;
         }
         pruneBluetooth();

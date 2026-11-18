@@ -406,6 +406,12 @@
     <string name="island_sound_mode">Ses modu</string>
     <string name="island_bluetooth_device">Bluetooth cihazı</string>
     <string name="island_connected">Bağlandı</string>
+    <string name="island_buds_battery">Sol %1$s · Sağ %2$s\nKutu %3$s</string>
+    <string name="island_buds_last_seen">%1$s (son ölçüm)</string>
+    <string name="island_buds_noise_cancellation">Gürültü engelleme</string>
+    <string name="island_buds_transparency">Şeffaf mod</string>
+    <string name="island_buds_noise_unavailable">Gürültü kontrolü kullanılamıyor</string>
+    <string name="island_buds_noise_failed">Gürültü kontrolü değiştirilemedi</string>
     <string name="island_sharing_screen">Ekran paylaşılıyor</string>
     <string name="island_casting_screen">Ekran yansıtılıyor</string>
     <string name="island_more_apps">" ve %1$d uygulama daha"</string>
