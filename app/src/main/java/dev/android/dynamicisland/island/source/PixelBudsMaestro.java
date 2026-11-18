@@ -47,19 +47,38 @@ final class PixelBudsMaestro {
     }
 
     static byte[] setMode(int channel, int mode) {
+        return setMode(channel, mode, 0);
+    }
+
+    static byte[] setMode(int channel, int mode, int callId) {
         if (mode < 1 || mode > 3) throw new IllegalArgumentException("Unknown noise control mode");
-        return request(channel, WRITE_MODE, (byte) 0x22, (byte) 2, (byte) 0x68, (byte) mode);
+        return encodeRequest(channel, WRITE_MODE, callId, (byte) 0x22, (byte) 2, (byte) 0x68, (byte) mode);
     }
 
     static byte[] request(int channel, int method, byte... payload) {
+        return encodeRequest(channel, method, 0, payload);
+    }
+
+    private static byte[] encodeRequest(int channel, int method, int callId, byte... payload) {
+        ByteArrayOutputStream call = new ByteArrayOutputStream();
+        if (callId != 0) {
+            call.write(0x38);
+            int rest = callId;
+            while ((rest & ~0x7f) != 0) {
+                call.write((rest & 0x7f) | 0x80);
+                rest >>>= 7;
+            }
+            call.write(rest);
+        }
         int address = address(channel);
         if (address == 0) throw new IllegalArgumentException("Unknown Maestro channel");
-        ByteBuffer buffer = ByteBuffer.allocate(15 + (payload.length == 0 ? 0 : 2 + payload.length) + 4)
+        ByteBuffer buffer = ByteBuffer.allocate(15 + (payload.length == 0 ? 0 : 2 + payload.length) + call.size() + 4)
                 .order(ByteOrder.LITTLE_ENDIAN);
         buffer.putShort((short) address).put((byte) 3);
         buffer.put((byte) 0x10).put((byte) channel);
         buffer.put((byte) 0x1d).putInt(MAESTRO).put((byte) 0x25).putInt(method);
         if (payload.length > 0) buffer.put((byte) 0x2a).put((byte) payload.length).put(payload);
+        buffer.put(call.toByteArray());
         buffer.putInt(crc(buffer.array(), buffer.position()));
 
         ByteArrayOutputStream wire = new ByteArrayOutputStream();

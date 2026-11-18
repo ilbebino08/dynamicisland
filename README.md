@@ -171,7 +171,7 @@ This stable release brings optional **iMotion**: one expanded activity, coordina
 ## Install
 
 1. Install a signed Dynamic Island APK from the project's **Releases**, if available. Otherwise, build it from source (below).
-2. In LSPosed, enable **Dynamic Island** and set its scope to **System UI** (`com.android.systemui`). For Pixel Buds 2a battery readings from the Google app, also select **Pixel Buds** (`com.google.android.apps.wearables.maestro.companion`) and restart that app.
+2. In LSPosed, enable **Dynamic Island** and set its scope to **System UI** (`com.android.systemui`). For Pixel Buds 2a battery readings and noise control through the Google app, also select **Pixel Buds** (`com.google.android.apps.wearables.maestro.companion`) and restart that app.
 3. Restart System UI (the app's **Restart System UI** button, or reboot).
 4. Open Dynamic Island from the launcher. Changes apply within a few seconds, no restart needed.
 

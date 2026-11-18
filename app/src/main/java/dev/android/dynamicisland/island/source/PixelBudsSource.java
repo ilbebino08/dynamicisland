@@ -61,7 +61,9 @@ final class PixelBudsSource {
                     if (!PixelBudsBatteryBridge.COMPANION.equals(getSentFromPackage())) return;
                     try {
                         onBatteryRelay(intent.getStringExtra(PixelBudsBatteryBridge.ADDRESS),
-                                intent.getIntArrayExtra(PixelBudsBatteryBridge.LEVELS));
+                                intent.getIntArrayExtra(PixelBudsBatteryBridge.LEVELS),
+                                intent.getIntExtra(PixelBudsBatteryBridge.MODE, PixelBudsBatteryBridge.UNCHANGED),
+                                intent.getBooleanExtra(PixelBudsBatteryBridge.REJECTED, false));
                     } catch (RuntimeException error) {
                         XLog.once("Pixel Buds battery relay input", error);
                     }
@@ -73,10 +75,11 @@ final class PixelBudsSource {
         }
     }
 
-    void onBatteryRelay(String address, int[] levels) {
+    void onBatteryRelay(String address, int[] levels, int mode, boolean rejected) {
         Buds buds = devices.get(address);
         if (buds == null || !ModuleSettings.eventBluetooth()) return;
         if (levels != null && (levels.length != 3 || Arrays.stream(levels).anyMatch(level -> level < -1 || level > 100))) return;
+        if (mode != PixelBudsBatteryBridge.UNCHANGED && (mode < 0 || mode > 4)) return;
         if (!buds.companionActive) {
             buds.companionActive = true;
             buds.stop();
@@ -88,6 +91,12 @@ final class PixelBudsSource {
         if (levels != null) {
             buds.updateBatteries(levels);
             XLog.d("Pixel Buds 2a: companion batteries received");
+        }
+        if (mode != PixelBudsBatteryBridge.UNCHANGED) buds.mode = mode;
+        if (buds.pendingMode != 0 && (mode == buds.pendingMode || rejected)) {
+            main.removeCallbacks(buds.companionWriteTimeout);
+            buds.pendingMode = 0;
+            buds.writeRejected = rejected;
         }
         onChange.run();
     }
@@ -180,6 +189,11 @@ final class PixelBudsSource {
         final int[] battery = {-1, -1, -1};
         final boolean[] lastSeen = new boolean[3];
         final Runnable retry = this::open;
+        final Runnable companionWriteTimeout = () -> {
+            pendingMode = 0;
+            writeRejected = true;
+            onChange.run();
+        };
         Session session;
         int failures;
         int mode = -1;
@@ -203,6 +217,7 @@ final class PixelBudsSource {
 
         void stop() {
             main.removeCallbacks(retry);
+            main.removeCallbacks(companionWriteTimeout);
             if (session != null) session.close();
             session = null;
         }
@@ -219,7 +234,7 @@ final class PixelBudsSource {
             item.description = text("island_buds_battery", level(0), level(1), level(2));
             item.descriptionMaxLines = 5;
             int next = nextMode(mode);
-            if (next != 0 && session != null) {
+            if (next != 0 && (session != null || companionActive)) {
                 item.actionType = 1;
                 item.actions.add(new IslandItem.Action(text(modeLabel(mode)), null, null, () -> setMode(next), false));
                 if (writeRejected) item.detail = text("island_buds_noise_failed");
@@ -262,7 +277,24 @@ final class PixelBudsSource {
         }
 
         void setMode(int next) {
-            if (session == null || pendingMode != 0 || next != nextMode(mode)) return;
+            if (!ModuleSettings.eventBluetooth() || devices.get(device.getAddress()) != this
+                    || pendingMode != 0 || next != nextMode(mode)) return;
+            if (companionActive) {
+                pendingMode = next;
+                try {
+                    Intent command = new Intent(PixelBudsBatteryBridge.SET_MODE)
+                            .setPackage(PixelBudsBatteryBridge.COMPANION)
+                            .putExtra(PixelBudsBatteryBridge.ADDRESS, device.getAddress())
+                            .putExtra(PixelBudsBatteryBridge.MODE, next);
+                    PixelBudsBatteryBridge.send(context, command);
+                    main.postDelayed(companionWriteTimeout, WRITE_TIMEOUT_MS);
+                } catch (RuntimeException error) {
+                    XLog.once("Pixel Buds ANC command", error);
+                    companionWriteTimeout.run();
+                }
+                return;
+            }
+            if (session == null) return;
             pendingMode = next;
             modePushedDuringWrite = false;
             main.postDelayed(session.writeTimeout, WRITE_TIMEOUT_MS);

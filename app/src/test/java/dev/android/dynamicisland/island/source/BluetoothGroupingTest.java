@@ -107,6 +107,27 @@ public class BluetoothGroupingTest {
         assertEquals(0, PixelBudsSource.nextMode(0));
     }
 
+    @Test public void companionModeMakesTheAncButtonAvailableWithoutADirectSocket() {
+        BluetoothDevice earbuds = device("3C:31:8A:46:D5:05", "Pixel Buds 2a", 73);
+        Shadows.shadowOf(earbuds).setBondState(BluetoothDevice.BOND_BONDED);
+        PixelBudsSource source = new PixelBudsSource(RuntimeEnvironment.getApplication(), main, () -> {});
+        source.connect(earbuds);
+        try {
+            source.onBatteryRelay(earbuds.getAddress(), new int[] {73, 72, 52}, 2, false);
+            List<IslandItem> cards = new ArrayList<>();
+            source.collect(cards);
+            assertEquals(1, cards.get(0).actions.size());
+            assertEquals("Noise cancellation", cards.get(0).actions.get(0).title);
+            source.onBatteryRelay(earbuds.getAddress(), null, 1, false);
+            cards.clear();
+            source.collect(cards);
+            assertEquals("Off", cards.get(0).actions.get(0).title);
+            assertTrue(cards.get(0).description.toString().contains("52%"));
+        } finally {
+            source.clear();
+        }
+    }
+
     @Test public void samsungMemberAndLeadCycleBecomeOneStablePopupAndEitherMemberUpdatesBattery() {
         BluetoothDevice left = device("3C:31:8A:46:D5:04", "Galaxy Buds3 Pro", 73);
         BluetoothDevice right = device("3C:31:8A:46:D6:BA", "LE-Galaxy Buds3 Pro", -1);
